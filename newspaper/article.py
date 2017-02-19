@@ -9,9 +9,7 @@ import copy
 import os
 import glob
 
-from . import images
 from . import network
-from . import nlp
 from . import settings
 from . import urls
 
@@ -21,7 +19,6 @@ from .extractors import ContentExtractor
 from .outputformatters import OutputFormatter
 from .utils import (URLHelper, RawHelper, extend_config,
                     get_available_languages, extract_meta_refresh)
-from .videos.extractors import VideoExtractor
 
 log = logging.getLogger(__name__)
 
@@ -142,7 +139,6 @@ class Article(object):
         """
         self.download()
         self.parse()
-        self.nlp()
 
     def download(self, html=None, title=None):
         """Downloads the link's HTML content, don't use if you are batch async
@@ -225,8 +221,6 @@ class Article(object):
         text = ''
         self.top_node = self.extractor.calculate_best_node(self.doc)
         if self.top_node is not None:
-            video_extractor = VideoExtractor(self.config, self.top_node)
-            self.set_movies(video_extractor.get_videos())
 
             self.top_node = self.extractor.post_cleanup(self.top_node)
             self.clean_top_node = copy.deepcopy(self.top_node)
@@ -237,29 +231,13 @@ class Article(object):
             self.set_text(text)
 
         if self.config.fetch_images:
-            self.fetch_images()
+            pass
 
         self.is_parsed = True
         self.release_resources()
 
     def fetch_images(self):
-        if self.clean_doc is not None:
-            meta_img_url = self.extractor.get_meta_img_url(
-                self.url, self.clean_doc)
-            self.set_meta_img(meta_img_url)
-
-            imgs = self.extractor.get_img_urls(self.url, self.clean_doc)
-            if self.meta_img:
-                imgs.add(self.meta_img)
-            self.set_imgs(imgs)
-
-        if self.clean_top_node is not None and not self.has_top_image():
-            first_img = self.extractor.get_first_img_url(
-                self.url, self.clean_top_node)
-            self.set_top_img(first_img)
-
-        if not self.has_top_image():
-            self.set_reddit_top_img()
+        pass
 
     def has_top_image(self):
         return self.top_img is not None and self.top_img != ''
@@ -320,24 +298,6 @@ class Article(object):
                 return True
         return False
 
-    def nlp(self):
-        """Keyword extraction wrapper
-        """
-        if not self.is_downloaded or not self.is_parsed:
-            print('You must `download()` and `parse()` an article '
-                  'before calling `nlp()` on it!')
-            raise ArticleException()
-
-        text_keyws = list(nlp.keywords(self.text).keys())
-        title_keyws = list(nlp.keywords(self.title).keys())
-        keyws = list(set(title_keyws + text_keyws))
-        self.set_keywords(keyws)
-
-        max_sents = self.config.MAX_SUMMARY_SENT
-
-        summary_sents = nlp.summarize(title=self.title, text=self.text, max_sents=max_sents)
-        summary = '\n'.join(summary_sents)
-        self.set_summary(summary)
 
     def get_parse_candidate(self):
         """A parse candidate is a wrapper object holding a link hash of this
@@ -375,23 +335,6 @@ class Article(object):
                 pass
         # os.remove(path)
 
-    def set_reddit_top_img(self):
-        """Wrapper for setting images. Queries known image attributes
-        first, then uses Reddit's image algorithm as a fallback.
-        """
-        try:
-            s = images.Scraper(self)
-            self.set_top_img(s.largest_image_url())
-        except TypeError as e:
-            if "Can't convert 'NoneType' object to str implicitly" in e.args[0]:
-                log.debug("No pictures found. Top image not set, %s" % e)
-            elif "timed out" in e.args[0]:
-                log.debug("Download of picture timed out. Top image not set, %s" % e)
-            else:
-                log.critical('TypeError other than None type error. Cannot set top image using the Reddit algorithm. Possible error with PIL., %s' % e)
-        except Exception as e:
-            log.critical('Other error with setting top image using the Reddit algorithm. Possible error with PIL, %s' % e)
-
     def set_title(self, title):
         if self.title and not title:
             # Title has already been set by an educated guess and
@@ -421,29 +364,6 @@ class Article(object):
         if article_html:
             self.article_html = article_html
 
-    def set_meta_img(self, src_url):
-        self.meta_img = src_url
-        self.set_top_img_no_check(src_url)
-
-    def set_top_img(self, src_url):
-        if src_url is not None:
-            s = images.Scraper(self)
-            if s.satisfies_requirements(src_url):
-                self.set_top_img_no_check(src_url)
-
-    def set_top_img_no_check(self, src_url):
-        """Provide 2 APIs for images. One at "top_img", "imgs"
-        and one at "top_image", "images"
-        """
-        self.top_img = src_url
-        self.top_image = src_url
-
-    def set_imgs(self, imgs):
-        """The motive for this method is the same as above, provide APIs
-        for both `article.imgs` and `article.images`
-        """
-        self.images = imgs
-        self.imgs = imgs
 
     def set_keywords(self, keywords):
         """Keys are stored in list format

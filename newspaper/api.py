@@ -9,7 +9,6 @@ __author__ = 'Lucas Ou-Yang'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2014, Lucas Ou-Yang'
 
-import feedparser
 
 from .article import Article
 from .configuration import Configuration
@@ -60,13 +59,7 @@ def popular_urls():
 def hot():
     """Returns a list of hit terms via google trends
     """
-    try:
-        listing = feedparser.parse(TRENDING_URL)['entries']
-        trends = [item['title'] for item in listing]
-        return trends
-    except Exception as e:
-        print('ERR hot terms failed!', str(e))
-        return None
+    return None
 
 
 def fulltext(html, language='en'):

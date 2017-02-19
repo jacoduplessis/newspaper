@@ -10,8 +10,6 @@ __copyright__ = 'Copyright 2014, Lucas Ou-Yang'
 
 import logging
 
-import feedparser
-
 from tldextract import tldextract
 
 from . import network
@@ -210,15 +208,7 @@ class Source(object):
         our .rss feeds, but rather regex searching for urls in the .rss
         text and then relying on our article logic to detect false urls.
         """
-        for feed in self.feeds:
-            try:
-                feed.dom = feedparser.parse(feed.html)
-            except Exception as e:
-                log.critical('feedparser failed %s' % e)
-                if self.config.verbose:
-                    print('feed %s has failed parsing' % feed.url)
-
-        self.feeds = [feed for feed in self.feeds if feed.dom is not None]
+        pass
 
     def feeds_to_articles(self):
         """Returns articles given the url of a feed
